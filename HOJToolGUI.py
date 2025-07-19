@@ -8,6 +8,7 @@ from html import escape
 from ttkbootstrap import Style
 import pyperclip
 import pywinstyles
+from windows_toasts import WindowsToaster, Toast
 
 
 class HOJAssistant:
@@ -16,9 +17,9 @@ class HOJAssistant:
         self.root.title("HOJ Tool")
         self.root.geometry("800x600")
         self.root.minsize(600, 400)
-        
-        self.version = "1.0.1" 
-        self.last_update = "20250718"
+        self.win_toasts = WindowsToaster('HOJ Tool')
+        self.version = "1.0.2" 
+        self.last_update = "20250719"
         self.author = "longStone"
 
         self.is_admin = False
@@ -191,8 +192,14 @@ class HOJAssistant:
                 #  + data['data']['username']
                 if response.status_code == 200 and data.get("status") == 200:
                     if data['data']['roleList'][0] == 'root' or data['data']['roleList'][0] == 'problem_admin' or data['data']['roleList'][0] == 'admin':
-                        messagebox.showinfo("成功", "欢迎回来，尊敬的管理员 " + username)
+                        newToast = Toast()
+                        newToast.text_fields = ["登录成功" , "欢迎回来，尊敬的管理员 " + username]
+                        self.win_toasts.show_toast(newToast)
                         is_admin = True
+                    else:
+                        newToast = Toast()
+                        newToast.text_fields = ["登录成功","欢迎回来，" + username]
+                        self.win_toasts.show_toast(newToast)
                     self.oj_base_url = oj_url  # 保存OJ基础URL
                     self.login_frame.destroy()
                     self.create_crawler_frame()
@@ -311,7 +318,7 @@ class HOJAssistant:
         self.submit_id_var = tk.StringVar()
         ttk.Entry(control_frame, textvariable=self.submit_id_var, width=40).grid(row=0, column=2, pady=5, sticky=tk.W)
         # 爬取按钮
-        crawl_btn = ttk.Button(control_frame, text="爬取代码", command=self.crawl_code)
+        crawl_btn = ttk.Button(control_frame, text="爬取代码", command=lambda: self.crawl_code("default"))
         crawl_btn.grid(row=0, column=3, pady=5, padx=10)
         # 范围
         ttk.Label(control_frame, text="范围:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
@@ -590,11 +597,13 @@ class HOJAssistant:
         self.root.update()
         for i in range(start_id, end_id + 1):
             self.submit_id_var.set(str(i))
-            self.crawl_code()
+            self.crawl_code("noerr")
             self.root.update()
             self.status_var.set("正在重测代码，编号：" + str(i))
-          
-    def crawl_code(self):
+        newToast = Toast()
+        newToast.text_fields = ["批量重测已经完成", "范围从" + str(start_id) + "到" + str(end_id) + "的代码"]  
+        self.win_toasts.show_toast(newToast)
+    def crawl_code(self, status):
         """处理代码爬取请求"""
         self.clear_debug_log()
         
@@ -632,12 +641,14 @@ class HOJAssistant:
                 self.log_debug(f"响应JSON: {json.dumps(data, indent=2)}")
                 
                 if response.status_code == 200 and data.get("status") == 200:
-                    self.display_code(data.get("data", {}))
                     self.status_var.set(f"成功获取提交ID为 {submit_id} 的代码")
+                    if status == "default":
+                        self.display_code(data.get("data", {}))
                 else:
                     error_msg = data.get("msg", "爬取失败，未知错误")
-                    messagebox.showerror("爬取失败", error_msg)
-                    self.status_var.set("爬取失败，请重试")
+                    self.status_var.set("爬取失败，请重试" + error_msg)
+                    if status == "default":
+                        messagebox.showerror("错误", error_msg)
             except json.JSONDecodeError:
                 self.log_debug(f"响应文本: {response.text[:500]}...")
                 raise
@@ -648,15 +659,17 @@ class HOJAssistant:
                 self.log_debug(f"响应状态码: {response.status_code}")
             if hasattr(response, 'text'):
                 self.log_debug(f"响应内容: {response.text[:500]}...")
-            
-            messagebox.showerror("网络错误", f"无法连接到服务器: {str(e)}")
+            if status == "default":
+                messagebox.showerror("网络错误", f"无法连接到服务器: {str(e)}")
             self.status_var.set("网络错误，请检查连接")
         except json.JSONDecodeError:
-            messagebox.showerror("错误", "服务器返回非JSON格式数据")
+            if status == "default":
+                messagebox.showerror("错误", "服务器返回非JSON格式数据")
             self.status_var.set("服务器响应异常")
         except Exception as e:
+            if status == "default":
+                messagebox.showerror("错误", f"发生未知错误: {str(e)}")
             self.log_debug(f"未知错误: {str(e)}")
-            messagebox.showerror("错误", f"发生未知错误: {str(e)}")
             self.status_var.set("发生未知错误")
     
     def display_code(self, code_data):
