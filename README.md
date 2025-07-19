@@ -1,5 +1,7 @@
 # HOJTool
 
+[English](https://github.com/longStone2024/HOJTool/blob/main/README.en.md)
+
 核里利用 HOJ 的 API 制作的小工具。
 
 为什么制作它：问作者似乎得不到任何帮助。
