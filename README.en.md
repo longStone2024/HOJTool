@@ -15,3 +15,18 @@ Actually, some parts were AI-assisted, but it's undeniable that AI's contributio
 
 ## Quick Start
 Available in both CLI and GUI versions, with GUI already compiled!
+
+To run the GUI version, you need to install the following libraries:  
+
+```cmd
+pip install requests ttkbootstrap pyperclip pywinstyles
+```  
+
+For the CLI version, only `requests` is required:  
+```cmd
+pip install requests
+```  
+
+This ensures compatibility with both graphical and command-line interfaces. The `requests` library is essential for HTTP operations, while additional packages like `ttkbootstrap`, `pyperclip`, and `pywinstyles` enhance GUI functionality.  
+
+Note: Always verify Python and pip are properly installed before proceeding.
