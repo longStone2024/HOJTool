@@ -17,3 +17,14 @@
 
 ## 快速使用
 分为 CLI 和 GUI 两个版本，GUI 已经编译好了！
+
+如果你要运行 GUI，你需要安装如下库:
+
+```cmd
+pip install requests ttkbootstrap pyperclip pywinstyles
+```
+
+CLI 则仅需要安装 `requests`：
+```cmd
+pip install requests
+```
