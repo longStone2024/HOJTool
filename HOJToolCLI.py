@@ -35,10 +35,13 @@ class ConfigManager:
     def get_token(self):
         """获取存储的 Token"""
         return self.config.get('token')
-        
-    def save_token(self, token):
+    def get_url(self):
+        """获取存储的 OJURL"""
+        return self.config.get('ojurl')   
+    def save_token(self, token, ojurl):
         """保存 Token 到配置文件"""
         self.config['token'] = token
+        self.config['ojurl'] = ojurl
         self.save_config()
         
     def clear_token(self):
@@ -49,22 +52,26 @@ class ConfigManager:
 
 class HOJAssistantCLI:
     def __init__(self):
-        self.version = "1.0.1" 
-        self.last_update = "20250718"
+        self.version = "1.1.0" 
+        self.last_update = "20250720"
         self.author = "longStone"
         self.is_admin = False
         self.session = requests.Session()
         self.debug_mode = False
         self.auth_token = None
-        self.oj_base_url = "https://deeplearning.org.cn"
+        self.oj_base_url = None
         self.username = None
         self.config_manager = ConfigManager()
         
         # 尝试从配置文件加载 Token
         saved_token = self.config_manager.get_token()
+        saved_oj_base_url = self.config_manager.get_url()
         if saved_token:
             self.auth_token = saved_token
             print("已从配置文件加载 Token")
+        if saved_oj_base_url:
+            self.oj_base_url = saved_oj_base_url
+            print("已从配置文件加载 URL")
 
     def get_common_headers(self, referer):
         """获取通用请求头"""
@@ -92,7 +99,7 @@ class HOJAssistantCLI:
         if token:
             self.username = "Token 用户"
             self.auth_token = token
-            self.config_manager.save_token(token)  # 保存 Token 到配置文件
+            self.config_manager.save_token(token, oj_url)  # 保存 Token 到配置文件
             print("Token 登录成功")
             return
 
@@ -117,7 +124,7 @@ class HOJAssistantCLI:
 
             if 'Authorization' in response.headers:
                 self.auth_token = response.headers['Authorization']
-                self.config_manager.save_token(self.auth_token)  # 保存 Token 到配置文件
+                self.config_manager.save_token(self.auth_token, oj_url)  # 保存 Token 到配置文件
             else:
                 self.auth_token = None
 
@@ -143,13 +150,72 @@ class HOJAssistantCLI:
         self.username = None
         self.config_manager.clear_token()
         print("已登出，Token 已清除")
+    def get_problem_info(self, problem_id):
+        """获取题目信息"""
+        if not self.oj_base_url or not self.auth_token:
+            print("错误: 请先登录")
+            return
 
+        problem_api_url = f"{self.oj_base_url}/api/get-problem-detail?problemId={problem_id}"
+        headers = self.get_common_headers(f"{self.oj_base_url}/problem/{problem_id}")
+
+        try:
+            response = self.session.get(problem_api_url, headers=headers)
+            response.raise_for_status()
+
+            data = response.json()
+
+            if response.status_code == 200 and data.get("status") == 200:
+                self.display_problem_detail(data.get("data", {}).get("problem", {}))
+                print(f"成功获取题目ID为 {problem_id} 的信息")
+            else:
+                error_msg = data.get("msg", "获取题目信息失败，未知错误")
+                print(f"获取失败: {error_msg}")
+        except requests.exceptions.RequestException as e:
+            print(f"网络错误: 无法连接到服务器: {str(e)}")
+        except json.JSONDecodeError:
+            print("错误: 服务器返回非JSON格式数据")
+        except Exception as e:
+            print(f"未知错误: {str(e)}")
+
+    def display_problem_detail(self, api_data):
+        """显示题目详情"""
+        if not api_data:
+            print("未获取到题目数据")
+            return
+
+        # 显示基本信息
+        info_items = [
+            ("题目:", api_data.get('title', 'N/A')),
+            ("作者:", api_data.get('author', 'N/A')),
+            ("时间限制:", f"{api_data.get('timeLimit', 'N/A')}ms"),
+            ("内存限制:", f"{api_data.get('memoryLimit', 'N/A')}mb")
+        ]
+
+        print("题目基本信息")
+        for label, value in info_items:
+            print(f"{label} {value}")
+
+        # 显示题目内容
+        content_sections = [
+            ("题目介绍", api_data.get('description', '')),
+            ("输入格式", api_data.get('input', '')),
+            ("输出格式", api_data.get('output', '')),
+            ("样例", api_data.get('examples', '')),
+            ("提示", api_data.get('hint', '')),
+            ("来源", api_data.get('source', ''))
+        ]
+
+        print("\n题目详情")
+        for section, content in content_sections:
+            if content:
+                print(f"\n## {section}")
+                print(content)
     def crawl_code(self, submit_id):
         """处理代码爬取请求"""
         if not submit_id.isdigit():
             print("错误: 提交ID必须是数字")
             return
-
         crawl_url = f"{self.oj_base_url}/api/resubmit?submitId={submit_id}"
         headers = self.get_common_headers(f"{self.oj_base_url}/status")
 
@@ -220,7 +286,6 @@ class HOJAssistantCLI:
         if not self.oj_base_url or not self.auth_token:
             print("错误: 请先登录")
             return
-
         try:
             with open(file_path, 'r', encoding='utf-8') as file:
                 code = file.read()
@@ -476,6 +541,8 @@ def main():
     # 删除 Session 命令
     remsession_parser = subparsers.add_parser('remsession', help='删除 CFSession')
 
+    problemcraw_parser = subparsers.add_parser('problemcraw', help='爬取题目信息')
+    problemcraw_parser.add_argument('-i', '--problem-id', required=True, help='题目ID')
     args = parser.parse_args()
 
     cli = HOJAssistantCLI()
@@ -502,6 +569,10 @@ def main():
         cli.send_session(args.session)
     elif args.command == 'remsession':
         cli.remove_session()
+    elif args.command == 'remsession':
+        cli.remove_session()
+    elif args.command == 'problemcraw':
+        cli.get_problem_info(args.problem_id)
 
 if __name__ == "__main__":
     main()

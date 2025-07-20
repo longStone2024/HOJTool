@@ -16,10 +16,10 @@ class HOJAssistant:
         self.root = root
         self.root.title("HOJ Tool")
         self.root.geometry("800x600")
-        self.root.minsize(600, 400)
+        self.root.minsize(800, 600)
         self.win_toasts = WindowsToaster('HOJ Tool')
-        self.version = "1.0.2" 
-        self.last_update = "20250719"
+        self.version = "1.1.0" 
+        self.last_update = "20250720"
         self.author = "longStone"
 
         self.is_admin = False
@@ -29,7 +29,7 @@ class HOJAssistant:
         self.style.configure("TLabel", font=("SimHei", 10))
         self.style.configure("TButton", font=("SimHei", 10))
         self.style.configure("TEntry", font=("SimHei", 10))
-        
+        self.problem_id_var = tk.StringVar()
         # 创建会话对象，用于保持登录状态
         self.session = requests.Session()
         
@@ -67,7 +67,7 @@ class HOJAssistant:
         debug_check.grid(row=4, column=0, sticky=tk.W, pady=5)
         
         # 登录按钮
-        login_btn = ttk.Button(self.login_frame, text="登录", style="Win11.TButton", command=self.login)
+        login_btn = ttk.Button(self.login_frame, text="登录", command=self.login)
         login_btn.grid(row=4, column=1, pady=20, sticky=tk.W)
         
         ttk.Label(self.login_frame, text="Token:").grid(row=5, column=0, sticky=tk.W, pady=5)
@@ -189,7 +189,6 @@ class HOJAssistant:
                 else:
                     self.auth_token = None
                     self.log_debug("未找到Authorization令牌")
-                #  + data['data']['username']
                 if response.status_code == 200 and data.get("status") == 200:
                     if data['data']['roleList'][0] == 'root' or data['data']['roleList'][0] == 'problem_admin' or data['data']['roleList'][0] == 'admin':
                         newToast = Toast()
@@ -245,7 +244,7 @@ class HOJAssistant:
         self.create_crawler_frame()
 
     def create_crawler_frame(self):
-        """创建爬取界面"""
+        """创建主界面"""
         self.crawler_frame = ttk.Frame(self.root, padding="20")
         self.crawler_frame.pack(fill=tk.BOTH, expand=True)
         
@@ -261,6 +260,9 @@ class HOJAssistant:
         self.notebook = ttk.Notebook(self.crawler_frame)
         self.notebook.grid(row=2, column=0, columnspan=2, sticky=tk.NSEW)
         
+        self.problem_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.problem_tab, text="题目爬取")
+
         self.code_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.code_tab, text="代码爬取")
         
@@ -281,6 +283,7 @@ class HOJAssistant:
         self.crawler_frame.columnconfigure(0, weight=1)
         
         # Setup all tabs
+        self.setup_problem_tab()
         self.setup_code_tab()
         self.setup_submit_tab()
         self.setup_discussion_tab()
@@ -303,7 +306,38 @@ class HOJAssistant:
         else:
             self.debug_text.grid_remove()  # 隐藏调试框
             self.clear_debug_log()
-    
+    def setup_problem_tab(self):
+        """设置题目爬取选项卡"""
+        # 控制区域
+        control_frame = ttk.Frame(self.problem_tab)
+        control_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 调试模式按钮
+        debug_check = ttk.Checkbutton(control_frame, text="调试模式", variable=self.debug_var, command=self.toggle_debug_mode)
+        debug_check.grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        # ID输入
+        ttk.Label(control_frame, text="题目ID:").grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
+        ttk.Entry(control_frame, textvariable=self.problem_id_var, width=40).grid(row=0, column=2, pady=5, sticky=tk.W)
+        
+        # 获取按钮
+        get_problem_btn = ttk.Button(control_frame, text="获取题目信息", command=self.get_problem_info)
+        get_problem_btn.grid(row=0, column=3, pady=5, padx=10)
+
+        
+        self.md_btn = ttk.Button(control_frame, text="复制 Markdown", command=self.copy_p_markdown)
+        self.md_btn.grid(row=0, column=4, padx=5, pady=5)
+        
+        p_detail_frame = ttk.LabelFrame(self.problem_tab, text="题目信息")
+        p_detail_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.p_info_frame = ttk.Frame(p_detail_frame)
+        self.p_info_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+
+        self.problem_text = scrolledtext.ScrolledText(p_detail_frame, wrap=tk.WORD, width=80, height=20)
+        self.problem_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.problem_text.config(state=tk.DISABLED)    
     def setup_code_tab(self):
         """设置代码爬取选项卡"""
         # 控制区域
@@ -361,7 +395,6 @@ class HOJAssistant:
         
         # ProblemID输入
         ttk.Label(control_frame, text="问题ID:").grid(row=0, column=1, sticky=tk.W, pady=5, padx=10)
-        self.problem_id_var = tk.StringVar()
         ttk.Entry(control_frame, textvariable=self.problem_id_var, width=40).grid(row=0, column=2, pady=5, sticky=tk.W)
 
         # 代码语言选择(输入框)
@@ -485,6 +518,101 @@ class HOJAssistant:
         copyright_text = "© 2025 longStone. All rights reserved."
         copyright_label = ttk.Label(control_frame, text=copyright_text, justify=tk.CENTER, font=("SimHei", 10))
         copyright_label.pack(anchor=tk.CENTER, padx=5, pady=5)
+    def get_problem_info(self):
+        """处理获取讨论信息的请求"""
+        self.clear_debug_log()
+
+        problem_id = self.problem_id_var.get().strip()
+
+        if not problem_id:
+            messagebox.showerror("错误", "请输入题目ID")
+            return
+
+        self.status_var.set("正在获取题目信息...")
+        self.root.update()
+
+        problem_api_url = f"{self.oj_base_url}/api/get-problem-detail?problemId={problem_id}"
+
+        headers = self.get_common_headers(f"{self.oj_base_url}/problem/{problem_id}")
+
+        self.log_debug(f"题目信息URL: {problem_api_url}")
+        self.log_debug(f"请求头: {json.dumps(headers, indent=2)}")
+        self.log_debug(f"当前Cookie: {json.dumps(self.session.cookies.get_dict(), indent=2)}")
+
+        try:
+            response = self.session.get(problem_api_url, headers=headers)
+            response.raise_for_status()  # 检查HTTP错误
+
+            self.log_debug(f"响应状态码: {response.status_code}")
+            self.log_debug(f"响应头: {json.dumps(dict(response.headers), indent=2)}")
+
+            try:
+                data = response.json()
+                self.log_debug(f"响应JSON: {json.dumps(data, indent=2)}")
+
+                if response.status_code == 200 and data.get("status") == 200:
+                    self.display_problem_detail(data.get("data", {}).get("problem", {}))
+                    self.status_var.set(f"成功获取题目ID为 {problem_id} 的信息")
+                else:
+                    error_msg = data.get("msg", "获取题目信息失败，未知错误")
+                    messagebox.showerror("获取题目信息失败", error_msg)
+                    self.status_var.set("获取题目信息失败，请重试")
+            except json.JSONDecodeError:
+                self.log_debug(f"响应文本: {response.text[:500]}...")
+                raise
+
+        except requests.exceptions.RequestException as e:
+            self.log_debug(f"请求异常: {str(e)}")
+            if hasattr(response, 'status_code'):
+                self.log_debug(f"响应状态码: {response.status_code}")
+            if hasattr(response, 'text'):
+                self.log_debug(f"响应内容: {response.text[:500]}...")
+
+            messagebox.showerror("网络错误", f"无法连接到服务器: {str(e)}")
+            self.status_var.set("网络错误，请检查连接")
+        except json.JSONDecodeError:
+            messagebox.showerror("错误", "服务器返回非JSON格式数据")
+            self.status_var.set("服务器响应异常")
+        except Exception as e:
+            self.log_debug(f"未知错误: {str(e)}")
+            messagebox.showerror("错误", f"发生未知错误: {str(e)}")
+            self.status_var.set("发生未知错误")    
+    def display_problem_detail(self, api_data):
+        """显示讨论详情"""
+        # 清空之前的信息
+        for widget in self.p_info_frame.winfo_children():
+            widget.destroy()
+        
+        self.problem_text.config(state=tk.NORMAL)
+        self.problem_text.delete(1.0, tk.END)
+        # 显示基本信息
+        info_items = [
+            ("题目:", api_data.get('title', 'N/A')),
+            ("作者:", api_data.get('author', 'N/A')),
+            ("时间限制:", str(api_data.get('timeLimit', 'N/A')) + "ms"),
+            ("内存限制:", str(api_data.get('memoryLimit', 'N/A')) + "mb")
+        ]
+        
+        for i, (label, value) in enumerate(info_items):
+            ttk.Label(self.p_info_frame, text=f"{label} {value}", font=("SimHei", 10)).grid(
+                row=i//3, column=i%3, sticky=tk.W, padx=5, pady=2
+            )
+        # 显示内容，合成为 Markdown 格式
+        description = "## 题目介绍\n" + (api_data.get('description') or '') + "\n## 输入格式\n" + (api_data.get('input') or '') + "\n## 输出格式\n" + (api_data.get('output') or '') + "\n## 样例\n" + (api_data.get('examples') or '') + "\n## 提示\n" + (api_data.get('hint') or '') + "\n## 来源\n" + (api_data.get('source') or '')
+
+        if description:
+            self.problem_text.config(state=tk.NORMAL)
+            self.problem_text.delete(1.0, tk.END)
+            self.problem_text.insert(tk.END, description)
+            self.problem_text.config(state=tk.DISABLED)
+    def copy_p_markdown(self):
+        """复制题目到剪贴板"""
+        code = self.problem_text.get(1.0, tk.END).strip()
+        if code:
+            pyperclip.copy(code)
+            messagebox.showinfo("成功", "代码已复制到剪贴板")
+        else:
+            messagebox.showerror("错误", "没有可复制的代码")
     def remove_session(self):
         """删除CFSession"""
         self.status_var.set("正在删除CFSession...")
