@@ -569,8 +569,6 @@ def main():
         cli.send_session(args.session)
     elif args.command == 'remsession':
         cli.remove_session()
-    elif args.command == 'remsession':
-        cli.remove_session()
     elif args.command == 'problemcraw':
         cli.get_problem_info(args.problem_id)
 
