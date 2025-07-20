@@ -21,7 +21,7 @@
 如果你要运行 GUI，你需要安装如下库:
 
 ```cmd
-pip install requests ttkbootstrap pyperclip pywinstyles
+pip install requests ttkbootstrap pyperclip pywinstyles tkinterweb
 ```
 
 CLI 则仅需要安装 `requests`：
