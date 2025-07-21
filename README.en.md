@@ -4,14 +4,15 @@ A small utility tool developed using HOJ's API at its core.
 
 Why create it: Asking the author seems to provide no help whatsoever.
 
-## Implemented Features
-Actually, some parts were AI-assisted, but it's undeniable that AI's contribution only accounts for a portion.
-1. **Code Crawling/Rejudging**: Allows crawling code for given IDs while exposing remote judging account credentials (implemented through unauthorized rejudging).
-2. **Custom Submission**: Submit code using your friend's name or in prohibited languages! (Requires remote judging enabled, will show `System Error` for unsupported languages, like `gene-2012`)
-3. **Discussion Crawling**: Directly crawl discussion Markdown content.
-4. **Discussion Like/Unlike**: Allows unlimited like status changes for discussions! (Like API lacks authentication, though author claims it's implemented)
-5. **Discussion Reporting**: Allows custom tags and content, even choosing who appears as the reporter - definitely not you!
-6. **Quick CFSession Refresh**: Only works for certain HOJ forks.
+## Introduction to Implemented Functions
+In fact, a part of it is AI assisted production, but it cannot be denied that AI's contribution can only account for a part.
+1. * * Code crawling/retesting * *: allows crawling of code for a given number, while also revealing the remote evaluation account password (based on unauthenticated retesting implementation).
+1. * * Custom submission * *: Submit code using your good friend's name or a prohibited language! (Of course, remote evaluation is required, and if the language is not supported, a 'System Error' will occur.)
+2. * * Discussion crawling * *: directly crawl the discussion Markdown.
+4. * * Custom post discussion * * In fact, you can customize your likes, comments, views, titles, etc
+5. * * Discuss liking/de liking * *: Allow unlimited times to change likes for the discussion! (Like API unverified, but author says he wrote it)
+6. * * Discussion and Reporting * *: Allow custom tags and content, and you can also choose the reporter yourself. Anyway, it's not your fault!
+7. Quick refresh CFSession: Only applicable to some HOJ branches.
 
 ## Quick Start
 Available in both CLI and GUI versions, with GUI already compiled!
