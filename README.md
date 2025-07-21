@@ -1,6 +1,6 @@
 # HOJTool
 
-[English](https://github.com/longStone2024/HOJTool/blob/main/README.en.md)
+[English](https://github.com/longStone2024/HOJTool/blob/main/README.en.md) | [HOJ](https://github.com/HimitZH/HOJ)
 
 核里利用 HOJ 的 API 制作的小工具。
 
