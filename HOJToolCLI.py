@@ -52,8 +52,8 @@ class ConfigManager:
 
 class HOJAssistantCLI:
     def __init__(self):
-        self.version = "1.1.0" 
-        self.last_update = "20250720"
+        self.version = "1.2.0" 
+        self.last_update = "20250721"
         self.author = "longStone"
         self.is_admin = False
         self.session = requests.Session()
@@ -496,6 +496,88 @@ class HOJAssistantCLI:
             print("错误: 服务器返回非JSON格式数据")
         except Exception as e:
             print(f"未知错误: {str(e)}")
+    def post_discussion_cli(self, file_path):
+        """通过CLI发布讨论"""
+        if not self.oj_base_url or not self.auth_token:
+            print("错误: 请先登录")
+            return
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                content_file = file.read()
+        except FileNotFoundError:
+            print("错误: 文件未找到")
+            return
+        # 获取其他用户输入
+        title = input("请输入讨论标题: ").strip()
+        description = input("请输入讨论介绍: ").strip()
+        pid = input("请输入引用题目ID (可选): ").strip()
+        
+        # 自定义标签选择
+        print("请选择自定义标签 (1: user, 2: admin, 3: root)")
+        role_choice = input("标签选项 (默认1): ").strip() or "1"
+        role_map = {"1": "user", "2": "admin", "3": "root"}
+        role = role_map.get(role_choice, "user")
+        
+        # 数字类型参数
+        view = input("请输入观看数 (默认0): ").strip() or "0"
+        like = input("请输入点赞数 (默认0): ").strip() or "0"
+        comment = input("请输入评论数 (默认0): ").strip() or "0"
+        category_id = input("请输入分类ID: ").strip()
+        gid = input("请输入团队ID (可选): ").strip()
+
+        # 构建请求数据（其余部分不变）
+        html_title = escape(title)
+        html_description = escape(description)
+        html_content = escape(content_file)
+
+        if gid:
+            submit_url = f"{self.oj_base_url}/api/group/discussion"
+            payload = {
+                "pid": (pid if pid else None),
+                "content": html_content,
+                "description": html_description,
+                "title": html_title,
+                "role": role,
+                "categoryId": category_id,
+                "viewNum": view,
+                "likeNum": like,
+                "commentNum": comment,
+                "gid": gid
+            }
+        else:
+            submit_url = f"{self.oj_base_url}/api/discussion"
+            payload = {
+                "pid": (pid if pid else None),
+                "content": html_content,
+                "description": html_description,
+                "title": html_title,
+                "role": role,
+                "categoryId": category_id,
+                "viewNum": view,
+                "likeNum": like,
+                "commentNum": comment
+            }
+
+        headers = self.get_common_headers(submit_url)
+        headers["Content-Type"] = "application/json"
+
+        try:
+            response = self.session.post(
+                submit_url,
+                json=payload,
+                headers=headers,
+                timeout=30
+            )
+            response.raise_for_status()
+            result = response.json()
+
+            if result.get("status") == 200:
+                print("讨论发布成功！")
+            else:
+                error_msg = result.get("msg", "提交失败，未知错误")
+                print(f"提交失败: {error_msg}")
+        except Exception as e:
+            print(f"发布失败: {str(e)}")
 def main():
     parser = argparse.ArgumentParser(description="HOJ Tool CLI")
     subparsers = parser.add_subparsers(dest='command')
@@ -520,6 +602,9 @@ def main():
     # 讨论爬取命令
     discusscraw_parser = subparsers.add_parser('discusscraw', help='爬取讨论信息')
     discusscraw_parser.add_argument('-i', '--discussion-id', required=True, help='讨论ID')
+
+    post_discussion_parser = subparsers.add_parser('post_discussion', help='发布讨论')
+    post_discussion_parser.add_argument('-f', '--file', required=True, help='讨论正文文件路径')
 
     # 点赞命令
     like_parser = subparsers.add_parser('like', help='点赞讨论')
@@ -558,7 +643,9 @@ def main():
     elif args.command == 'submit':
         cli.submit_code(args.file)
     elif args.command == 'discusscraw':
-        cli.get_discussion_info(args.discussion_id)
+        cli.get_discussion_info(args.discussion_id)    
+    elif args.command == 'post_discussion':
+        cli.post_discussion_cli(args.file)
     elif args.command == 'like':
         cli.to_discussion_like(True, args.discussion_id)
     elif args.command == 'dislike':

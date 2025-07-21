@@ -15,11 +15,11 @@ class HOJAssistant:
     def __init__(self, root):
         self.root = root
         self.root.title("HOJ Tool")
-        self.root.geometry("800x600")
-        self.root.minsize(800, 600)
+        self.root.geometry("1000x760")
+        self.root.minsize(1000, 700)
         self.win_toasts = WindowsToaster('HOJ Tool')
-        self.version = "1.1.0" 
-        self.last_update = "20250720"
+        self.version = "1.2.0" 
+        self.last_update = "20250721"
         self.author = "longStone"
 
         self.is_admin = False
@@ -72,7 +72,7 @@ class HOJAssistant:
         
         ttk.Label(self.login_frame, text="Token:").grid(row=5, column=0, sticky=tk.W, pady=5)
         self.token_var = tk.StringVar()
-        ttk.Entry(self.login_frame, textvariable=self.token_var, width=80).grid(row=5, column=1, pady=5, sticky=tk.W)
+        ttk.Entry(self.login_frame, textvariable=self.token_var, width=100).grid(row=5, column=1, pady=5, sticky=tk.W)
         
         login_btn = ttk.Button(self.login_frame, text="Token 登录", command=self.token_login)
         login_btn.grid(row=5, column=2, pady=10, sticky=tk.W)
@@ -272,6 +272,9 @@ class HOJAssistant:
         self.discussion_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.discussion_tab, text="讨论信息")
         
+        self.post_discussion_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.post_discussion_tab, text="发布讨论")
+        
         self.other_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.other_tab, text="其他")
 
@@ -287,6 +290,7 @@ class HOJAssistant:
         self.setup_code_tab()
         self.setup_submit_tab()
         self.setup_discussion_tab()
+        self.setup_post_discussion_tab()
         self.setup_other_tab()
         self.setup_about_tab()
         
@@ -482,6 +486,74 @@ class HOJAssistant:
         self.discussion_content_text = scrolledtext.ScrolledText(detail_frame, width=70, height=10, wrap=tk.WORD)
         self.discussion_content_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         self.discussion_content_text.config(state=tk.DISABLED)
+    def setup_post_discussion_tab(self):
+        """设置代码提交选项卡"""
+        # 控制区域
+        control_frame = ttk.Frame(self.post_discussion_tab)
+        control_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 调试模式按钮
+        debug_check = ttk.Checkbutton(control_frame, text="调试模式", variable=self.debug_var, command=self.toggle_debug_mode)
+        debug_check.grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        # Title输入
+        ttk.Label(control_frame, text="标题:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
+        self.discuss_title_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_title_var, width=15).grid(row=1, column=1, pady=5, sticky=tk.W)
+        # 讨论内容介绍
+        ttk.Label(control_frame, text="介绍:").grid(row=1, column=2, sticky=tk.W, pady=5, padx=10)
+        self.description_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.description_var, width=50).grid(row=1, column=3, pady=5, sticky=tk.W)
+        # role
+        ttk.Label(control_frame, text="自定义标签:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=10)
+        self.custom_tag_var = tk.StringVar(value="user")
+        custom_tag_combobox = ttk.Combobox(control_frame, textvariable=self.custom_tag_var, width=10, state="readonly")
+        custom_tag_combobox['values'] = ("role", "admin", "root")
+        custom_tag_combobox.grid(row=3, column=1, sticky=tk.W, pady=5, padx=10)
+        # 讨论分类
+        ttk.Label(control_frame, text="讨论分类编号:").grid(row=3, column=2, sticky=tk.W, pady=5, padx=10)
+        self.discuss_category_id = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_category_id, width=10).grid(row=3, column=3, pady=5, sticky=tk.W)
+        # 观看数
+        ttk.Label(control_frame, text="观看数:").grid(row=1, column=4, sticky=tk.W, pady=5, padx=10)
+        self.discuss_view_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_view_var, width=10).grid(row=1, column=5, pady=5, sticky=tk.W)
+        # 点赞数
+        ttk.Label(control_frame, text="点赞数:").grid(row=3, column=4, sticky=tk.W, pady=5, padx=10)
+        self.discuss_like_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_like_var, width=10).grid(row=3, column=5, pady=5, sticky=tk.W)
+        # 引用题目
+        ttk.Label(control_frame, text="引用题目:").grid(row=4, column=0, sticky=tk.W, pady=5, padx=10)
+        self.discuss_problem_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_problem_var, width=10).grid(row=4, column=1, pady=5, sticky=tk.W)
+        # 团队ID
+        ttk.Label(control_frame, text="团队ID:").grid(row=4, column=2, sticky=tk.W, pady=5, padx=10)
+        self.discuss_group_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_group_var, width=10).grid(row=4, column=3, pady=5, sticky=tk.W)
+        # 评论数
+        ttk.Label(control_frame, text="评论数:").grid(row=4, column=4, sticky=tk.W, pady=5, padx=10)
+        self.discuss_comment_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.discuss_comment_var, width=10).grid(row=4, column=5, pady=5, sticky=tk.W)
+        # 按钮
+        post_di_btn = ttk.Button(control_frame, text="发送讨论", command=self.post_discussion) 
+        post_di_btn.grid(row=4, column=6, pady=5, padx=10)
+        
+        # 代码信息区域
+        self.content_info_frame = ttk.Frame(self.post_discussion_tab)
+        self.content_info_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 代码内容区域
+        content_frame = ttk.Frame(self.post_discussion_tab)
+        content_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # 代码标题
+        content_header_frame = ttk.Frame(content_frame)
+        content_header_frame.pack(fill=tk.X)
+        
+        ttk.Label(content_header_frame, text="讨论内容:", font=("SimHei", 10, "bold")).pack(side=tk.LEFT, padx=5, pady=5)
+        # 代码文本框
+        self.content_text = scrolledtext.ScrolledText(content_frame, width=70, height=15, wrap=tk.WORD)
+        self.content_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
     def setup_other_tab(self):
         """设置其他选项卡"""
         # 控制区域
@@ -1207,7 +1279,97 @@ class HOJAssistant:
             self.discussion_content_text.insert(tk.END, content)
         
         self.discussion_content_text.config(state=tk.DISABLED)
+    def post_discussion(self):
+        """发送讨论到API"""
+        self.clear_debug_log()
+        
+        # 获取UI输入值
+        title = self.discuss_title_var.get().strip()
+        description = self.description_var.get().strip()
+        pid = self.discuss_problem_var.get().strip()
+        content = self.content_text.get(1.0, tk.END).strip()
+        role = self.custom_tag_var.get().strip()
+        view = self.discuss_view_var.get().strip()
+        like = self.discuss_like_var.get().strip()
+        gid = self.discuss_group_var.get().strip()
+        comment = self.discuss_comment_var.get().strip()
+        self.status_var.set("正在发送讨论...")
+        self.root.update()
+        
+        # 将代码转换为HTML格式（转义特殊字符）
+        html_title = escape(title)
+        html_description = escape(description)
+        html_content = escape(content)
+        # 构建请求数据
+        # 如果 GID 为空，则不包含 GID 字段
+        if gid:
+            submit_url = f"{self.oj_base_url}/api/group/discussion"
+            payload = {
+                "pid": (pid if pid else None),
+                "content": html_content,
+                "description": html_description,
+                "title": html_title,
+                "role": role,
+                "categoryId": self.discuss_category_id.get(),
+                "viewNum": view,
+                "likeNum": like,
+                "commentNum": comment,
+                "gid": gid
+            }
+        else:
+            submit_url = f"{self.oj_base_url}/api/discussion"
+            payload = {
+                "pid": (pid if pid else None),
+                "content": html_content,
+                "description": html_description,
+                "title": html_title,
+                "role": role,
+                "categoryId": self.discuss_category_id.get(),
+                "viewNum": view,
+                "likeNum": like,
+                "commentNum": comment 
+            }
+        
+        headers = self.get_common_headers(submit_url)
 
+        headers["Content-Type"] = "application/json"
+        self.log_debug(f"提交URL: {submit_url}")
+        self.log_debug(f"请求头: {json.dumps(headers, indent=2)}")
+        self.log_debug(f"提交数据: {json.dumps(payload, indent=2)}")
+        
+        try:
+            # 发送POST请求
+            response = self.session.post(
+                submit_url,
+                json=payload,  # 直接使用json参数而非data
+                headers=headers,
+                timeout=30
+            )
+            response.raise_for_status()
+            
+            # 解析响应
+            result = response.json()
+            self.log_debug(f"提交响应: {json.dumps(result, indent=2)}")
+            
+            if result.get("status") == 200:
+                messagebox.showinfo("成功", f"讨论发布成功！")
+                self.status_var.set("讨论发布成功")
+            else:
+                error_msg = result.get("msg", "提交失败，未知错误")
+                messagebox.showerror("提交失败", error_msg)
+                self.status_var.set("提交失败，请重试")
+                
+        except requests.exceptions.RequestException as e:
+            self.log_debug(f"请求异常: {str(e)}")
+            messagebox.showerror("网络错误", f"无法连接到服务器: {str(e)}")
+            self.status_var.set("网络错误，请检查连接")
+        except json.JSONDecodeError:
+            messagebox.showerror("错误", "服务器返回非JSON格式数据")
+            self.status_var.set("服务器响应异常")
+        except Exception as e:
+            self.log_debug(f"未知错误: {str(e)}")
+            messagebox.showerror("错误", f"发生未知错误: {str(e)}")
+            self.status_var.set("发生未知错误")
 if __name__ == "__main__":
     root = tk.Tk()
     app = HOJAssistant(root)
