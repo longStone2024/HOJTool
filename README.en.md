@@ -1,5 +1,7 @@
 # HOJTool
 
+[Chinese](https://github.com/longStone2024/HOJTool/blob/main/README.md) | [HOJ](https://github.com/HimitZH/HOJ)
+
 A small utility tool developed using HOJ's API at its core.
 
 Why create it: Asking the author seems to provide no help whatsoever.
