@@ -3,7 +3,6 @@ import json
 import requests
 import argparse
 from datetime import datetime
-from html import escape
 
 class ConfigManager:
     """配置管理器，用于处理配置文件的读写"""
@@ -301,7 +300,7 @@ class HOJAssistantCLI:
             print("错误: 请输入完整的信息")
             return
 
-        html_escaped_code = escape(code)
+        html_escaped_code = code
 
         payload = {
             "pid": pid,
@@ -526,9 +525,9 @@ class HOJAssistantCLI:
         gid = input("请输入团队ID (可选): ").strip()
 
         # 构建请求数据（其余部分不变）
-        html_title = escape(title)
-        html_description = escape(description)
-        html_content = escape(content_file)
+        html_title = title
+        html_description = description
+        html_content = content_file
 
         if gid:
             submit_url = f"{self.oj_base_url}/api/group/discussion"

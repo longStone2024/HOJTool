@@ -4,7 +4,6 @@ import requests
 import json
 import re
 from datetime import datetime
-from html import escape
 from ttkbootstrap import Style
 import pyperclip
 import pywinstyles
@@ -18,8 +17,8 @@ class HOJAssistant:
         self.root.geometry("1000x760")
         self.root.minsize(1000, 700)
         self.win_toasts = WindowsToaster('HOJ Tool')
-        self.version = "1.2.0" 
-        self.last_update = "20250721"
+        self.version = "1.2.1" 
+        self.last_update = "20250722"
         self.author = "longStone"
 
         self.is_admin = False
@@ -508,7 +507,7 @@ class HOJAssistant:
         ttk.Label(control_frame, text="自定义标签:").grid(row=3, column=0, sticky=tk.W, pady=5, padx=10)
         self.custom_tag_var = tk.StringVar(value="user")
         custom_tag_combobox = ttk.Combobox(control_frame, textvariable=self.custom_tag_var, width=10, state="readonly")
-        custom_tag_combobox['values'] = ("role", "admin", "root")
+        custom_tag_combobox['values'] = ("user", "admin", "root")
         custom_tag_combobox.grid(row=3, column=1, sticky=tk.W, pady=5, padx=10)
         # 讨论分类
         ttk.Label(control_frame, text="讨论分类编号:").grid(row=3, column=2, sticky=tk.W, pady=5, padx=10)
@@ -582,7 +581,8 @@ class HOJAssistant:
         control_frame.pack(fill=tk.X, padx=5, pady=5)
         about_text = f"HOJ Tool {self.version}\n" \
                      f"作者: {self.author}\n" \
-                     f"最后更新: {self.last_update}\n"
+                     f"最后更新: {self.last_update}\n" \
+                     f"该工具仅用于学习和研究 HOJ 及其功能实现，不得用于商业用途。\n" 
         # 居中显示 About
         about_label = ttk.Label(control_frame, text=about_text, justify=tk.CENTER, font=("SimHei", 10))
         about_label.pack(anchor=tk.CENTER, padx=5, pady=5)
@@ -906,11 +906,6 @@ class HOJAssistant:
             ttk.Label(self.code_info_frame, text=f"{label} {value}", font=("SimHei", 10)).grid(
                 row=start_row + i//2, column=i%2, sticky=tk.W, padx=5, pady=2
             )
-        #黄字显示不要抄袭警告
-        ttk.Label(self.code_info_frame, text="警告：本工具仅用于学习研究用途，请于下载后 24 小时删除", font=("SimHei", 10, "bold"), foreground="orange").grid(
-            row=start_row + len(info_items)//2, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2
-        )
-
         # 处理代码内容
         code = code_data.get('code', '')
         if code:
@@ -955,22 +950,11 @@ class HOJAssistant:
         code = self.submit_text.get(1.0, tk.END).strip()
         is_remote = self.is_remote_var.get()
         
-        # 验证输入
-        if not pid:
-            messagebox.showerror("错误", "请输入题目ID")
-            return
-        if not language:
-            messagebox.showerror("错误", "请输入代码语言")
-            return
-        if not code:
-            messagebox.showerror("错误", "代码内容不能为空")
-            return
-        
         self.status_var.set("正在提交代码...")
         self.root.update()
         
-        # 将代码转换为HTML格式（转义特殊字符）
-        html_escaped_code = escape(code)
+        # 无需转义
+        html_escaped_code = code
         
         # 构建请求数据
         payload = {
@@ -983,7 +967,6 @@ class HOJAssistant:
             "isRemote": is_remote
         }
         
-        # 提交API地址（请替换为实际API地址）
         submit_url = f"{self.oj_base_url}/api/submit-problem-judge"
         headers = self.get_common_headers(submit_url)
 
@@ -1031,14 +1014,6 @@ class HOJAssistant:
         self.clear_debug_log()
 
         discussion_id = self.discussion_id_var.get().strip()
-
-        if not discussion_id:
-            messagebox.showerror("错误", "请输入讨论ID")
-            return
-
-        if not discussion_id.isdigit():
-            messagebox.showerror("错误", "讨论ID必须是数字")
-            return
 
         self.status_var.set("正在获取讨论信息...")
         self.root.update()
@@ -1096,14 +1071,6 @@ class HOJAssistant:
         self.clear_debug_log()
 
         discussion_id = self.discussion_id_var.get().strip()
-
-        if not discussion_id:
-            messagebox.showerror("错误", "请输入讨论ID")
-            return
-
-        if not discussion_id.isdigit():
-            messagebox.showerror("错误", "讨论ID必须是数字")
-            return
 
         self.status_var.set("正在处理点赞请求...")
         self.root.update()
@@ -1164,23 +1131,6 @@ class HOJAssistant:
         discussion_id = self.discussion_id_var.get().strip()
         reporter_name = self.reporter_name_var.get().strip()
         report_tags = self.report_tags_var.get().strip()
-
-        if not discussion_id:
-            messagebox.showerror("错误", "请输入讨论ID")
-            return
-
-        if not discussion_id.isdigit():
-            messagebox.showerror("错误", "讨论ID必须是数字")
-            return
-
-        if not reporter_name:
-            messagebox.showerror("错误", "请输入举报者名字")
-            return
-
-        if not report_tags:
-            messagebox.showerror("错误", "请输入举报标签")
-            return
-
         self.status_var.set("正在处理举报请求...")
         self.root.update()
 
@@ -1297,9 +1247,9 @@ class HOJAssistant:
         self.root.update()
         
         # 将代码转换为HTML格式（转义特殊字符）
-        html_title = escape(title)
-        html_description = escape(description)
-        html_content = escape(content)
+        html_title = title
+        html_description = description
+        html_content = content
         # 构建请求数据
         # 如果 GID 为空，则不包含 GID 字段
         if gid:
