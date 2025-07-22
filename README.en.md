@@ -22,7 +22,7 @@ Available in both CLI and GUI versions, with GUI already compiled!
 To run the GUI version, you need to install the following libraries:  
 
 ```cmd
-pip install requests ttkbootstrap pyperclip pywinstyles tkinterweb
+pip install requests ttkbootstrap pyperclip pywinstyles
 ```  
 
 For the CLI version, only `requests` is required:  
