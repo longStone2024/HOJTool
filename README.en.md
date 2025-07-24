@@ -15,6 +15,7 @@ In fact, a part of it is AI assisted production, but it cannot be denied that AI
 5. **Discuss liking/de liking**: Allow unlimited times to change likes for the discussion! (Like API unverified, but author says he wrote it)
 6. **Discussion and Reporting**: Allow custom tags and content, and you can also choose the reporter yourself. Anyway, it's not your fault!
 7. Quick refresh CFSession: Only applicable to some HOJ branches.
+8. **status craw**: Quickly get the latest results.
 
 ## Quick Start
 Available in both CLI and GUI versions, with GUI already compiled!
