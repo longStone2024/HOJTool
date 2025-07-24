@@ -20,6 +20,7 @@
 ## 快速使用
 分为 CLI 和 GUI 两个版本，GUI 已经编译好了！
 
+
 如果你要运行 GUI，你需要安装如下库:
 
 ```cmd
@@ -30,3 +31,15 @@ CLI 则仅需要安装 `requests` 和 `tabulate`：
 ```cmd
 pip install requests tabulate
 ```
+## 使用截图
+
+<img width="499" height="156" alt="Screenshot 2025-07-20 131318" src="https://github.com/user-attachments/assets/41a8dc68-0939-484d-82bb-b1d0bd460a94" />
+
+<img width="1482" height="1150" alt="Screenshot 2025-07-24 222132" src="https://github.com/user-attachments/assets/3f5e64bc-d9cb-4086-88c2-5ceeb1a60b7c" />
+
+<img width="1507" height="1186" alt="Screenshot 2025-07-24 222242" src="https://github.com/user-attachments/assets/a2d04528-7b74-4370-a694-709ce82b9cab" />
+
+<img width="1488" height="1183" alt="Screenshot 2025-07-24 222311" src="https://github.com/user-attachments/assets/eab7c0d4-175a-4b8e-badb-f347b87dfb31" />
+
+
+
