@@ -3,6 +3,7 @@ import json
 import requests
 import argparse
 from datetime import datetime
+from tabulate import tabulate
 
 class ConfigManager:
     """配置管理器，用于处理配置文件的读写"""
@@ -51,8 +52,8 @@ class ConfigManager:
 
 class HOJAssistantCLI:
     def __init__(self):
-        self.version = "1.2.0" 
-        self.last_update = "20250721"
+        self.version = "1.3.0" 
+        self.last_update = "20250724"
         self.author = "longStone"
         self.is_admin = False
         self.session = requests.Session()
@@ -61,7 +62,25 @@ class HOJAssistantCLI:
         self.oj_base_url = None
         self.username = None
         self.config_manager = ConfigManager()
-        
+        # 添加评测状态映射
+        self.status_list = {
+            0 : "Accepted",
+            1 : "Time Limit Exceeded",
+            2 : "Memory Limit Exceeded",
+            3 : "Runtime Error",
+            4 : "System Error",
+            5 : "Pending",
+            6 : "Compiling",
+            7 : "Judging",
+            8 : "Partial Accepted",
+            9 : "Submitting",
+            10 : "Submitted Failed",
+            -5 : "Submitted Unknown Result",
+            -4 : "Canceled",
+            -3 : "Presentation Error",
+            -2 : "Compile Error",
+            -1 : "Wrong Answer"
+        }
         # 尝试从配置文件加载 Token
         saved_token = self.config_manager.get_token()
         saved_oj_base_url = self.config_manager.get_url()
@@ -149,6 +168,46 @@ class HOJAssistantCLI:
         self.username = None
         self.config_manager.clear_token()
         print("已登出，Token 已清除")
+    def get_submission_records(self, page=1, limit=30, only_mine=False):
+        """获取并显示提交记录（CLI版get_record）"""
+        if not self.oj_base_url or not self.auth_token:
+            print("错误: 请先登录")
+            return
+
+        # 构建请求URL（迁移自GUI的URL构造逻辑）
+        only_mine_str = 'true' if only_mine else 'false'
+        url = f"{self.oj_base_url}/api/get-submission-list?onlyMine={only_mine_str}&currentPage={page}&limit={limit}&completeProblemID=false"
+        headers = self.get_common_headers(f"{self.oj_base_url}/status")
+        headers["Content-Type"] = "application/json"
+
+        try:
+            response = self.session.get(url, headers=headers)
+            response.raise_for_status()
+            data = response.json()['data']['records']
+
+            # 格式化表格数据（替代GUI的Treeview）
+            table_data = []
+            for r in data:
+                table_data.append([
+                    r['submitId'],
+                    f"{r['displayPid']} {r['title']}",
+                    self.status_list.get(r['status'], '未知状态'),
+                    f"{r['time']}ms",
+                    f"{r['memory']}MB",
+                    f"{r['length']}B",
+                    r['language'],
+                    r['username']
+                ])
+
+            # 输出表格（替代GUI的可视化表格）
+            print("\n提交记录列表:")
+            print(tabulate(table_data, headers=[
+                "评测ID", "题目", "运行结果", "运行时间", "运行空间", "代码大小", "语言", "作者"
+            ], tablefmt="grid"))
+
+        except Exception as e:
+            print(f"获取提交记录失败: {str(e)}")
+
     def get_problem_info(self, problem_id):
         """获取题目信息"""
         if not self.oj_base_url or not self.auth_token:
@@ -627,8 +686,12 @@ def main():
 
     problemcraw_parser = subparsers.add_parser('problemcraw', help='爬取题目信息')
     problemcraw_parser.add_argument('-i', '--problem-id', required=True, help='题目ID')
+    
+    submissions_parser = subparsers.add_parser('submissions', help='查看提交记录')
+    submissions_parser.add_argument('--page', type=int, default=1, help='页码（默认1）')
+    submissions_parser.add_argument('--limit', type=int, default=30, help='每页数量（默认30）')
+    submissions_parser.add_argument('--only-mine', action='store_true', help='只看我的提交')
     args = parser.parse_args()
-
     cli = HOJAssistantCLI()
     if args.command == 'login':
         if args.username:
@@ -657,6 +720,8 @@ def main():
         cli.remove_session()
     elif args.command == 'problemcraw':
         cli.get_problem_info(args.problem_id)
+    elif args.command == 'submissions':
+        cli.get_submission_records(page=args.page, limit=args.limit, only_mine=args.only_mine)
 
 if __name__ == "__main__":
     main()

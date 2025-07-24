@@ -17,8 +17,8 @@ class HOJAssistant:
         self.root.geometry("1000x760")
         self.root.minsize(1000, 700)
         self.win_toasts = WindowsToaster('HOJ Tool')
-        self.version = "1.2.1" 
-        self.last_update = "20250722"
+        self.version = "1.3.0" 
+        self.last_update = "20250724"
         self.author = "longStone"
 
         self.is_admin = False
@@ -29,6 +29,26 @@ class HOJAssistant:
         self.style.configure("TButton", font=("SimHei", 10))
         self.style.configure("TEntry", font=("SimHei", 10))
         self.problem_id_var = tk.StringVar()
+
+        # 常用评测状态对应
+        self.status_list = {
+            0 : "Accepted",
+            1 : "Time Limit Exceeded",
+            2 : "Memory Limit Exceeded",
+            3 : "Runtime Error",
+            4 : "System Error",
+            5 : "Pending",
+            6 : "Compiling",
+            7 : "Judging",
+            8 : "Partial Accepted",
+            9 : "Submitting",
+            10 : "Submitted Failed",
+            -5 : "Submitted Unknown Result",
+            -4 : "Canceled",
+            -3 : "Presentation Error",
+            -2 : "Compile Error",
+            -1 : "Wrong Answer"
+        }
         # 创建会话对象，用于保持登录状态
         self.session = requests.Session()
         
@@ -79,11 +99,7 @@ class HOJAssistant:
         # 状态标签
         self.status_var = tk.StringVar(value="请输入登录信息")
         ttk.Label(self.login_frame, textvariable=self.status_var).grid(row=6, column=0, columnspan=2, pady=10)
-        
-        ttk.Label(self.login_frame, text="警告：本工具仅用于学习研究用途，请于下载后 24 小时删除", font=("SimHei", 10, "bold"), foreground="orange").grid(
-            row=7, column=0, columnspan=2, sticky=tk.W, padx=5, pady=2
-        )
-        
+
         # 调试信息文本框 - 初始隐藏
         self.debug_text = scrolledtext.ScrolledText(self.login_frame, width=70, height=10, wrap=tk.WORD)
         self.debug_text.grid(row=6, column=0, columnspan=2, pady=10, sticky=tk.NSEW)
@@ -268,6 +284,9 @@ class HOJAssistant:
         self.submit_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.submit_tab, text="代码提交")
 
+        self.status_tab = ttk.Frame(self.notebook)
+        self.notebook.add(self.status_tab, text="评测记录")
+
         self.discussion_tab = ttk.Frame(self.notebook)
         self.notebook.add(self.discussion_tab, text="讨论信息")
         
@@ -288,6 +307,7 @@ class HOJAssistant:
         self.setup_problem_tab()
         self.setup_code_tab()
         self.setup_submit_tab()
+        self.setup_status_tab()
         self.setup_discussion_tab()
         self.setup_post_discussion_tab()
         self.setup_other_tab()
@@ -429,6 +449,52 @@ class HOJAssistant:
         # 代码文本框
         self.submit_text = scrolledtext.ScrolledText(submit_frame, width=70, height=15, wrap=tk.WORD)
         self.submit_text.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+    def setup_status_tab(self):
+        """设置评测状态选项卡"""
+        # 控制区域
+        control_frame = ttk.Frame(self.status_tab)
+        control_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # 调试模式按钮
+        debug_check = ttk.Checkbutton(control_frame, text="调试模式", variable=self.debug_var, command=self.toggle_debug_mode)
+        debug_check.grid(row=0, column=0, sticky=tk.W, pady=5)
+        
+        ttk.Label(control_frame, text="每页评测数:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
+        status_limit_var = ttk.Spinbox(control_frame, from_=1, to=100, increment=1, width=10)
+        status_limit_var.set(30)
+        status_limit_var.grid(row=1, column=1, padx=5, pady=5)
+
+        ttk.Label(control_frame, text="当前页数:").grid(row=1, column=3, sticky=tk.W, pady=5, padx=10)
+        self.status_page_var = tk.StringVar(value="1")
+        ttk.Entry(control_frame, textvariable=self.status_page_var, width=10).grid(row=1, column=4, pady=5, sticky=tk.W)
+
+
+        self.only_my_var = tk.BooleanVar(value=False)
+        only_my_check = ttk.Checkbutton(control_frame, text="只看我的", variable=self.only_my_var)
+        only_my_check.grid(row=0, column=1, sticky=tk.W, pady=5)
+        
+        get_status_btn = ttk.Button(control_frame, text="获取评测信息", command=lambda: self.get_record(int(status_limit_var.get())))
+        get_status_btn.grid(row=2, column=0, pady=5, padx=10)
+
+        status_frame = ttk.LabelFrame(self.status_tab, text="评测列表")
+        status_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.status_info_frame = ttk.Frame(status_frame)
+        self.status_info_frame.pack(fill=tk.X, padx=5, pady=5)
+
+        columns = ("评测ID", "题目", "运行结果", "运行时间", "运行空间", "代码大小", "语言", "作者")
+        self.results_tree = ttk.Treeview(status_frame, columns=columns, show="headings")
+
+        # 设置列标题和宽度
+        for col in columns:
+            self.results_tree.heading(col, text=col)
+            self.results_tree.column(col, width=100, anchor="center")
+
+        # 添加滚动条
+        scrollbar = ttk.Scrollbar(status_frame, orient="vertical", command=self.results_tree.yview)
+        self.results_tree.configure(yscroll=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.results_tree.pack(fill=tk.BOTH, expand=True)
     def setup_discussion_tab(self):
         """设置讨论信息选项卡"""
         # 控制区域
@@ -1009,6 +1075,53 @@ class HOJAssistant:
             self.log_debug(f"未知错误: {str(e)}")
             messagebox.showerror("错误", f"发生未知错误: {str(e)}")
             self.status_var.set("发生未知错误")
+    def get_record(self, limit=30):
+        """获取提交记录"""
+        # 清空现有表格数据
+        for item in self.results_tree.get_children():
+            self.results_tree.delete(item)
+        # 构建请求URL
+        only_mine_str = self.only_my_var.get()
+        url = f"{self.oj_base_url}/api/get-submission-list?onlyMine={only_mine_str}&currentPage={self.status_page_var.get()}&limit={limit}&completeProblemID=false"
+        headers = self.get_common_headers(url)
+        headers["Content-Type"] = "application/json"
+        self.log_debug(f"获取评测!\n目标地址 {url}")
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            data = response.json()['data']['records']
+            self.log_debug(f"Data 返回: {data}")
+            for r in data:
+                # 状态码转文本描述
+                status_text = self.status_list[r['status']]
+                
+                # 插入行数据（按表格列顺序排列）
+                self.results_tree.insert('', 'end', values=(
+                    r['submitId'],          # 评测ID
+                    r['displayPid'] + ' ' + r['title'],       # 题目名
+                    status_text,                         # 运行结果
+                    f"{r['time']} ms",       # 时间
+                    f"{r['memory']} MB",     # 空间占用
+                    f"{r['length']} B",  # 代码大小
+                    r['language'],          # 语言
+                    r['username']             # 作者
+                ))
+        except requests.exceptions.RequestException as e:
+            self.log_debug(f"请求异常: {str(e)}")
+            if hasattr(response, 'status_code'):
+                self.log_debug(f"响应状态码: {response.status_code}")
+            if hasattr(response, 'text'):
+                self.log_debug(f"响应内容: {response.text[:500]}...")
+
+            messagebox.showerror("网络错误", f"无法连接到服务器: {str(e)}")
+            self.status_var.set("网络错误，请检查连接")
+        except json.JSONDecodeError:
+            messagebox.showerror("错误", "服务器返回非JSON格式数据")
+            self.status_var.set("服务器响应异常")
+        except Exception as e:
+            self.log_debug(f"未知错误: {str(e)}")
+            messagebox.showerror("错误", f"发生未知错误，登录状态可能已失效")
+            self.status_var.set("发生未知错误")
     def get_discussion_info(self):
         """处理获取讨论信息的请求"""
         self.clear_debug_log()
@@ -1246,7 +1359,6 @@ class HOJAssistant:
         self.status_var.set("正在发送讨论...")
         self.root.update()
         
-        # 将代码转换为HTML格式（转义特殊字符）
         html_title = title
         html_description = description
         html_content = content
