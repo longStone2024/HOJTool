@@ -25,7 +25,7 @@
 pip install requests ttkbootstrap pyperclip pywinstyles
 ```
 
-CLI 则仅需要安装 `requests`：
+CLI 则仅需要安装 `requests` 和 `tabulate`：
 ```cmd
-pip install requests
+pip install requests tabulate
 ```
