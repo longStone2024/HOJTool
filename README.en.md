@@ -25,9 +25,9 @@ To run the GUI version, you need to install the following libraries:
 pip install requests ttkbootstrap pyperclip pywinstyles
 ```  
 
-For the CLI version, only `requests` is required:  
+For the CLI version, only `requests` and `tabulate` is required:  
 ```cmd
-pip install requests
+pip install requests tabulate
 ```  
 
 This ensures compatibility with both graphical and command-line interfaces. The `requests` library is essential for HTTP operations, while additional packages like `ttkbootstrap`, `pyperclip`, and `pywinstyles` enhance GUI functionality.  
