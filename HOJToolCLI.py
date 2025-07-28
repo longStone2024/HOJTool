@@ -75,6 +75,7 @@ class HOJAssistantCLI:
             8 : "Partial Accepted",
             9 : "Submitting",
             10 : "Submitted Failed",
+            -10 : "Not Submitted",
             -5 : "Submitted Unknown Result",
             -4 : "Canceled",
             -3 : "Presentation Error",
@@ -168,24 +169,74 @@ class HOJAssistantCLI:
         self.username = None
         self.config_manager.clear_token()
         print("已登出，Token 已清除")
-    def get_submission_records(self, page=1, limit=30, only_mine=False):
-        """获取并显示提交记录（CLI版get_record）"""
+    def resubmit_status(self, submit_ids):
+        """批量重测功能（CLI版resubmit_status）"""
+        if not submit_ids:
+            print("错误: 请提供需要重测的提交ID列表，用逗号分隔")
+            return
+
+        print(f"即将重测 {len(submit_ids)} 个提交...")
+        success_count = 0
+
+        for submit_id in submit_ids:
+            if not submit_id.isdigit():
+                print(f"跳过无效ID: {submit_id}")
+                continue
+
+            print(f"正在重测提交ID: {submit_id}")
+            try:
+                # 复用现有crawl_code逻辑
+                crawl_url = f"{self.oj_base_url}/api/resubmit?submitId={submit_id}"
+                headers = self.get_common_headers(f"{self.oj_base_url}/status")
+                response = self.session.get(crawl_url, headers=headers)
+                response.raise_for_status()
+                data = response.json()
+
+                if response.status_code == 200 and data.get("status") == 200:
+                    print(f"重测成功: {submit_id}")
+                    success_count += 1
+                else:
+                    error_msg = data.get("msg", "重测失败")
+                    print(f"重测失败 {submit_id}: {error_msg}")
+            except Exception as e:
+                print(f"重测异常 {submit_id}: {str(e)}")
+
+        print(f"批量重测完成: 成功{success_count}/{len(submit_ids)}")
+    def get_submission_records(self, page=1, limit=30, only_mine=False, problem_id=None, author=None, complete_p=False):
+        """获取提交记录（增强版，支持更多过滤条件）"""
         if not self.oj_base_url or not self.auth_token:
             print("错误: 请先登录")
             return
 
-        # 构建请求URL（迁移自GUI的URL构造逻辑）
-        only_mine_str = 'true' if only_mine else 'false'
-        url = f"{self.oj_base_url}/api/get-submission-list?onlyMine={only_mine_str}&currentPage={page}&limit={limit}&completeProblemID=false"
+        # 构建查询参数（迁移自GUI的status_tab过滤逻辑）
+        params = {
+            "onlyMine": 'true' if only_mine else 'false',
+            "currentPage": page,
+            "limit": limit,
+            "completeProblemID": 'true' if complete_p else 'false'
+        }
+
+        # 添加可选过滤条件
+        if problem_id:
+            params["problemID"] = problem_id
+        if author:
+            params["username"] = author
+
+        # 构建查询URL
+        query_string = '&'.join([f"{k}={v}" for k, v in params.items()])
+        url = f"{self.oj_base_url}/api/get-submission-list?{query_string}"
         headers = self.get_common_headers(f"{self.oj_base_url}/status")
-        headers["Content-Type"] = "application/json"
 
         try:
             response = self.session.get(url, headers=headers)
             response.raise_for_status()
             data = response.json()['data']['records']
 
-            # 格式化表格数据（替代GUI的Treeview）
+            if not data:
+                print("没有找到提交记录")
+                return
+
+            # 使用tabulate格式化输出（保持CLI现有风格）
             table_data = []
             for r in data:
                 table_data.append([
@@ -199,7 +250,6 @@ class HOJAssistantCLI:
                     r['username']
                 ])
 
-            # 输出表格（替代GUI的可视化表格）
             print("\n提交记录列表:")
             print(tabulate(table_data, headers=[
                 "评测ID", "题目", "运行结果", "运行时间", "运行空间", "代码大小", "语言", "作者"
@@ -207,7 +257,6 @@ class HOJAssistantCLI:
 
         except Exception as e:
             print(f"获取提交记录失败: {str(e)}")
-
     def get_problem_info(self, problem_id):
         """获取题目信息"""
         if not self.oj_base_url or not self.auth_token:
@@ -677,6 +726,13 @@ def main():
     report_parser.add_argument('-i', '--discussion-id', required=True, help='讨论ID')
     report_parser.add_argument('-t', '--report-reason', required=True, help='举报原因')
 
+    record_parser = subparsers.add_parser('records', help='查询提交记录')
+    record_parser.add_argument('--page', type=int, default=1, help='页码，默认1')
+    record_parser.add_argument('--limit', type=int, default=30, help='每页数量，默认30')
+    record_parser.add_argument('--only-mine', action='store_true', help='只看我的提交')
+    record_parser.add_argument('--problem-id', help='按题目ID过滤')
+    record_parser.add_argument('--author', help='按作者过滤')
+    record_parser.add_argument('--complete', action='store_true', help='完整题目信息')
     # 更新 Session 命令
     updsession_parser = subparsers.add_parser('updsession', help='更新 CFSession')
     updsession_parser.add_argument('-t', '--session', required=True, help='新的session')
@@ -686,6 +742,9 @@ def main():
 
     problemcraw_parser = subparsers.add_parser('problemcraw', help='爬取题目信息')
     problemcraw_parser.add_argument('-i', '--problem-id', required=True, help='题目ID')
+
+    resubmit_parser = subparsers.add_parser('resubmit', help='批量重测提交')
+    resubmit_parser.add_argument('submit_ids', help='提交ID列表，用逗号分隔')
     
     submissions_parser = subparsers.add_parser('submissions', help='查看提交记录')
     submissions_parser.add_argument('--page', type=int, default=1, help='页码（默认1）')
@@ -702,6 +761,18 @@ def main():
         cli.logout()
     elif args.command == 'submitcraw':
         cli.crawl_code(args.submit_id)
+    elif args.command == 'resubmit':
+        submit_ids = args.submit_ids.split(',')
+        cli.resubmit_status(submit_ids)
+    elif args.command == 'records':
+        cli.get_submission_records(
+            page=args.page,
+            limit=args.limit,
+            only_mine=args.only_mine,
+            problem_id=args.problem_id,
+            author=args.author,
+            complete_p=args.complete
+        )
     elif args.command == 'submit':
         cli.submit_code(args.file)
     elif args.command == 'discusscraw':
@@ -720,8 +791,6 @@ def main():
         cli.remove_session()
     elif args.command == 'problemcraw':
         cli.get_problem_info(args.problem_id)
-    elif args.command == 'submissions':
-        cli.get_submission_records(page=args.page, limit=args.limit, only_mine=args.only_mine)
 
 if __name__ == "__main__":
     main()

@@ -43,6 +43,7 @@ class HOJAssistant:
             8 : "Partial Accepted",
             9 : "Submitting",
             10 : "Submitted Failed",
+            -10 : "Not Submitted",
             -5 : "Submitted Unknown Result",
             -4 : "Canceled",
             -3 : "Presentation Error",
@@ -459,22 +460,36 @@ class HOJAssistant:
         debug_check = ttk.Checkbutton(control_frame, text="调试模式", variable=self.debug_var, command=self.toggle_debug_mode)
         debug_check.grid(row=0, column=0, sticky=tk.W, pady=5)
         
+        self.only_my_var = tk.BooleanVar(value=False)
+        only_my_check = ttk.Checkbutton(control_frame, text="只看我的", variable=self.only_my_var)
+        only_my_check.grid(row=0, column=1, sticky=tk.W, pady=5)
+
+        self.complete_p_var = tk.BooleanVar(value=False)
+        only_my_check = ttk.Checkbutton(control_frame, text="完整题目", variable=self.complete_p_var)
+        only_my_check.grid(row=0, column=2, sticky=tk.W, pady=5)
+
         ttk.Label(control_frame, text="每页评测数:").grid(row=1, column=0, sticky=tk.W, pady=5, padx=10)
         status_limit_var = ttk.Spinbox(control_frame, from_=1, to=100, increment=1, width=10)
         status_limit_var.set(30)
         status_limit_var.grid(row=1, column=1, padx=5, pady=5)
 
-        ttk.Label(control_frame, text="当前页数:").grid(row=1, column=3, sticky=tk.W, pady=5, padx=10)
+        ttk.Label(control_frame, text="当前页数:").grid(row=1, column=2, sticky=tk.W, pady=5, padx=10)
         self.status_page_var = tk.StringVar(value="1")
-        ttk.Entry(control_frame, textvariable=self.status_page_var, width=10).grid(row=1, column=4, pady=5, sticky=tk.W)
+        ttk.Entry(control_frame, textvariable=self.status_page_var, width=10).grid(row=1, column=3, pady=5, sticky=tk.W)
 
+        ttk.Label(control_frame, text="题目关键词:").grid(row=1, column=4, sticky=tk.W, pady=5, padx=10)
+        self.status_p_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.status_p_var, width=10).grid(row=1, column=5, pady=5, sticky=tk.W)
 
-        self.only_my_var = tk.BooleanVar(value=False)
-        only_my_check = ttk.Checkbutton(control_frame, text="只看我的", variable=self.only_my_var)
-        only_my_check.grid(row=0, column=1, sticky=tk.W, pady=5)
+        ttk.Label(control_frame, text="作者:").grid(row=1, column=6, sticky=tk.W, pady=5, padx=10)
+        self.status_author_var = tk.StringVar()
+        ttk.Entry(control_frame, textvariable=self.status_author_var, width=10).grid(row=1, column=7, pady=5, sticky=tk.W)
         
-        get_status_btn = ttk.Button(control_frame, text="获取评测信息", command=lambda: self.get_record(int(status_limit_var.get())))
+        get_status_btn = ttk.Button(control_frame, text="获取评测信息", command=lambda: self.get_record(status_limit_var.get()))
         get_status_btn.grid(row=2, column=0, pady=5, padx=10)
+
+        get_status_btn = ttk.Button(control_frame, text="批量重测", command=self.resubmit_status)
+        get_status_btn.grid(row=2, column=1, pady=5, padx=10)
 
         status_frame = ttk.LabelFrame(self.status_tab, text="评测列表")
         status_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -736,7 +751,7 @@ class HOJAssistant:
                 row=i//3, column=i%3, sticky=tk.W, padx=5, pady=2
             )
         # 显示内容，合成为 Markdown 格式
-        description = "## 题目介绍\n" + (api_data.get('description') or '') + "\n## 输入格式\n" + (api_data.get('input') or '') + "\n## 输出格式\n" + (api_data.get('output') or '') + "\n## 样例\n" + (api_data.get('examples') or '') + "\n## 提示\n" + (api_data.get('hint') or '') + "\n## 来源\n" + (api_data.get('source') or '')
+        description = "#" + (api_data.get('title') or '') + "\n## 题目介绍\n" + (api_data.get('description') or '') + "\n## 输入格式\n" + (api_data.get('input') or '') + "\n## 输出格式\n" + (api_data.get('output') or '') + "\n## 样例\n" + (api_data.get('examples') or '') + "\n## 提示\n" + (api_data.get('hint') or '') + "\n## 来源\n" + (api_data.get('source') or '')
 
         if description:
             self.problem_text.config(state=tk.NORMAL)
@@ -848,12 +863,6 @@ class HOJAssistant:
         self.clear_debug_log()
         start_id = self.start_id.get().strip()
         end_id = self.end_id.get().strip()
-        if not start_id or not end_id:
-            messagebox.showerror("错误", "请输入完整的范围")
-            return
-        if not start_id.isdigit() or not end_id.isdigit():
-            messagebox.showerror("错误", "范围必须是数字")
-            return
         start_id = int(start_id)
         end_id = int(end_id)
         if start_id > end_id:
@@ -868,20 +877,27 @@ class HOJAssistant:
             self.status_var.set("正在重测代码，编号：" + str(i))
         newToast = Toast()
         newToast.text_fields = ["批量重测已经完成", "范围从" + str(start_id) + "到" + str(end_id) + "的代码"]  
+        self.win_toasts.show_toast(newToast)  
+    def resubmit_status(self):
+        """重测status代码"""
+        self.clear_debug_log()
+        self.status_var.set("正在批量重测代码...")
+        resubmit_cnt = 0
+        for item in self.results_tree.get_children():
+            submit_id = self.results_tree.item(item)["values"][0]
+            self.submit_id_var.set(str(submit_id))
+            self.status_var.set("正在重测代码，编号：" + str(submit_id))
+            self.crawl_code("noerr")
+            self.root.update()
+            resubmit_cnt += 1
+        newToast = Toast()
+        newToast.text_fields = ["批量重测已经完成", "共重测了" + str(resubmit_cnt) + "条代码"]  
         self.win_toasts.show_toast(newToast)
     def crawl_code(self, status):
         """处理代码爬取请求"""
         self.clear_debug_log()
         
         submit_id = self.submit_id_var.get().strip()
-        
-        if not submit_id:
-            messagebox.showerror("错误", "请输入提交ID")
-            return
-        
-        if not submit_id.isdigit():
-            messagebox.showerror("错误", "提交ID必须是数字")
-            return
         
         self.status_var.set("正在爬取代码...")
         self.root.update()
@@ -1082,7 +1098,8 @@ class HOJAssistant:
             self.results_tree.delete(item)
         # 构建请求URL
         only_mine_str = self.only_my_var.get()
-        url = f"{self.oj_base_url}/api/get-submission-list?onlyMine={only_mine_str}&currentPage={self.status_page_var.get()}&limit={limit}&completeProblemID=false"
+        complete_p_str = self.complete_p_var.get()
+        url = f"{self.oj_base_url}/api/get-submission-list?onlyMine={only_mine_str}&username={self.status_author_var.get()}&problemID={self.status_p_var.get()}&currentPage={self.status_page_var.get()}&limit={limit}&completeProblemID={complete_p_str}"
         headers = self.get_common_headers(url)
         headers["Content-Type"] = "application/json"
         self.log_debug(f"获取评测!\n目标地址 {url}")
